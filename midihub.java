@@ -1,5 +1,6 @@
 import java.io.File;
 import javax.sound.midi.*;
+import java.util.*;
 
 /**
  * Write a description of class midihub here.
@@ -16,19 +17,70 @@ public class midihub
     
     public static Sequence midisequence;
     public static Track[] tracks;
+    public static ArrayList<Vector<Integer>> noteSequences = new ArrayList<Vector<Integer>>();
+    public static int currentNoteSequenceIndex = 0;
+    public static int previousTick=0;
+    public boolean running = true;
+    public static boolean finalNoteSequence = true;
+    public static Vector<Integer> currentNoteSequence = new Vector<Integer>();
+    public static Vector<Integer> receivedNoteSequence = new Vector<Integer>();
+    public static Vector<Integer> noteBatch = new Vector<Integer>();
     
     public static void main(String args[]) throws Exception{
         loadMidi();
-        printNotesInSequence();
+        //printNotesInSequence();
+        //mainLoop();
+    }
+    
+    static void mainLoop(){
+        while(true){
+         
+            setLights(currentNoteSequence);
+            
+            if(true){   //event received from midi instrument (piano)
+                if(checkNoteSequenceMatch(currentNoteSequence,receivedNoteSequence)){
+                    if(finalNoteSequence){
+                        System.exit(0);
+                    }else{
+                        iterateNextNoteSequence();
+                    }
+                }
+            }
+        }
+    }
+    
+    static boolean checkNoteSequenceMatch(Vector<Integer> a, Vector<Integer> b){
+        boolean result = true;
+        Collections.sort(a);
+        Collections.sort(b);
+        for(int i=0; i<Math.max(a.size(), b.size()); i++){
+            if(a.get(i) != b.get(i)){
+                result=false;
+                i=Math.max(a.size(), b.size());
+            }
+        }
+        return result;
+    }
+    
+    static void iterateNextNoteSequence(){
+        //we might want a small delay here
+        currentNoteSequence = noteSequences.get(currentNoteSequenceIndex);
+        currentNoteSequenceIndex++;
+    }
+    
+    static void setLights(Vector<Integer> lights){
+        // Placeholder
+        // Interact with LED strip(s) connected to Raspberry Pi IO pins...
     }
     
     static void loadMidi() throws Exception{
         midisequence = MidiSystem.getSequence(new File("mond_1.mid"));
-        System.out.println("Length: "+midisequence.getMicrosecondLength());
         tracks = midisequence.getTracks();
+        processTracks();
+        printSequences();
     }
     
-    static void printNotesInSequence(){
+    static void processTracks(){
         int t0event = 0;
         int t1event = 0;
         int t2event = 0;
@@ -85,6 +137,8 @@ public class midihub
             }
         }
         
+        noteSequences.add(noteBatch); //push the final batch into NoteSequences
+        
     }
     
     static int maxTick(){
@@ -113,7 +167,25 @@ public class midihub
                 note = key % 12;
                 noteName = NOTE_NAMES[note];
                 System.out.println("@" + tick + " track=" + track + " note=" + noteName + octave + " key=" + key);
+                if((tick-previousTick) < 10){
+                    noteBatch.addElement(key);
+                }else{
+                    noteSequences.add(noteBatch);
+                    noteBatch= new Vector<Integer>();
+                    noteBatch.addElement(key);
+                }
+                previousTick=tick;
             }
         }        
+    }
+    
+    static void printSequences(){
+        for(int i=0; i<noteSequences.size(); i++){
+            System.out.print("sequence "+i+": ");
+            for(int j=0; j<noteSequences.get(i).size(); j++){
+                System.out.print(noteSequences.get(i).elementAt(j)+", ");
+            }
+            System.out.println("");
+        }
     }
 }
