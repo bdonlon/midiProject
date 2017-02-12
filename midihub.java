@@ -31,9 +31,9 @@ public class midihub
     static Track[] tracks;
     static ArrayList<Vector<Integer>> noteSequences = new ArrayList<Vector<Integer>>();
     static int currentNoteSequenceIndex = 0;
-    static int previousTick=0;
+    static long previousTick=0;
     static boolean running = true;
-    static boolean finalNoteSequence = true;
+    static boolean finalNoteSequence = false;
     static Vector<Integer> currentNoteSequence = new Vector<Integer>();
     static Vector<Integer> receivedNoteSequence = new Vector<Integer>();
     static Vector<Integer> noteBatch = new Vector<Integer>();
@@ -43,8 +43,66 @@ public class midihub
     public static void main(String args[]) throws Exception{
         loadMidi();
         piano = new MIDIReceiver();
+        piano.init();
+        test();
         //printNotesInSequence();
         //mainLoop();
+    }
+    
+    void setNextReceivedNotes(Vector<Integer> receivedNoteSequence){
+        if(checkNoteSequenceMatch(currentNoteSequence,receivedNoteSequence)){
+            if(finalNoteSequence){
+                System.out.println("song finished");
+                System.exit(0);
+            }else{
+                iterateNextNoteSequence();
+                setLights(currentNoteSequence);
+            }
+        }
+    }
+    
+    static void test() throws Exception{
+        System.out.println("Testing: sending simulated midi input from piano");
+        ShortMessage myMsg = new ShortMessage();
+        Receiver rcvr = MidiSystem.getReceiver();
+        
+        myMsg.setMessage(ShortMessage.NOTE_ON, 0, 60, 93);
+        piano.send(myMsg, 5);
+         myMsg.setMessage(ShortMessage.NOTE_ON, 0, 61, 93);
+         piano.send(myMsg, 6);
+       //myMsg.setMessage(ShortMessage.NOTE_ON, 0, 62, 93);
+       //piano.send(myMsg, 7);
+       
+       //myMsg.setMessage(ShortMessage.NOTE_ON, 0, 63, 93);
+       //piano.send(myMsg, 20);
+       
+       //myMsg.setMessage(ShortMessage.NOTE_ON, 0, 64, 93);
+       //piano.send(myMsg, 55);
+       //myMsg.setMessage(ShortMessage.NOTE_ON, 0, 65, 93);
+       //piano.send(myMsg, 56);
+        
+        myMsg.setMessage(ShortMessage.NOTE_ON, 0, 37, 93);
+        piano.send(myMsg, 67);
+        myMsg.setMessage(ShortMessage.NOTE_ON, 0, 56, 93);
+        piano.send(myMsg, 68);
+        myMsg.setMessage(ShortMessage.NOTE_ON, 0, 49, 93);
+        piano.send(myMsg, 69);
+        
+        myMsg.setMessage(ShortMessage.NOTE_ON, 0, 61, 93);
+        piano.send(myMsg, 80);
+        
+        myMsg.setMessage(ShortMessage.NOTE_ON, 0, 61, 93);
+        piano.send(myMsg, 100);
+        
+        myMsg.setMessage(ShortMessage.NOTE_ON, 0, 64, 93);
+        piano.send(myMsg, 120);
+        
+        //never checked because last message added, and no followup message to check timestamp against.
+        myMsg.setMessage(ShortMessage.NOTE_ON, 0, 15, 93);
+        piano.send(myMsg, 131);
+        
+        System.out.println("Testing: end");
+        System.exit(0);
     }
     
     static void mainLoop(){
@@ -55,6 +113,7 @@ public class midihub
             if(true){   //event received from midi instrument (piano)
                 if(checkNoteSequenceMatch(currentNoteSequence,receivedNoteSequence)){
                     if(finalNoteSequence){
+                        System.out.println("song finished");
                         System.exit(0);
                     }else{
                         iterateNextNoteSequence();
@@ -65,22 +124,33 @@ public class midihub
     }
     
     static boolean checkNoteSequenceMatch(Vector<Integer> a, Vector<Integer> b){
+        //System.out.println("Checking sequence match between "+a+" and "+b);
         boolean result = true;
         Collections.sort(a);
         Collections.sort(b);
-        for(int i=0; i<Math.max(a.size(), b.size()); i++){
-            if(a.get(i) != b.get(i)){
-                result=false;
-                i=Math.max(a.size(), b.size());
+        if(a.size() == b.size()){
+            for(int i=0; i<Math.min(a.size(), b.size()); i++){
+                if(a.get(i) != b.get(i)){
+                    result=false;
+                    i=Math.max(a.size(), b.size()); //terminate the loop early
+                }
             }
+        }else{
+            result=false;
         }
+        //System.out.println("Match result: "+result);
         return result;
     }
     
     static void iterateNextNoteSequence(){
         //we might want a small delay here
-        currentNoteSequence = noteSequences.get(currentNoteSequenceIndex);
+        //System.out.println("iterating to next note sequence from midi file");
         currentNoteSequenceIndex++;
+        currentNoteSequence = noteSequences.get(currentNoteSequenceIndex);
+        if(currentNoteSequenceIndex==noteSequences.size()){
+            finalNoteSequence=true;
+        }
+        //System.out.println("current note sequence from midi file: "+currentNoteSequence);
     }
     
     static void setLights(Vector<Integer> lights){
@@ -92,6 +162,8 @@ public class midihub
         midisequence = MidiSystem.getSequence(new File("mond_1.mid"));
         tracks = midisequence.getTracks();
         processTracks();
+        currentNoteSequence=noteSequences.get(0);
+        //System.out.println("value of currentNoteSequence: "+currentNoteSequence);
         //printSequences();
     }
     
