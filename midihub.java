@@ -39,30 +39,47 @@ public class midihub
     static Vector<Integer> noteBatch = new Vector<Integer>();
     
     static MIDIReceiver piano;
+    static LEDStrip lights;
     
     public static void main(String args[]) throws Exception{
         loadMidi();
         piano = new MIDIReceiver();
         piano.init();
-        test();
+        
+        lights = new LEDStrip();
+        
+        //test1();
+        test2();
         //printNotesInSequence();
         //mainLoop();
     }
     
-    void setNextReceivedNotes(Vector<Integer> receivedNoteSequence){
+    static void setNextReceivedNotes(Vector<Integer> receivedNoteSequence){
         if(checkNoteSequenceMatch(currentNoteSequence,receivedNoteSequence)){
             if(finalNoteSequence){
                 System.out.println("song finished");
                 System.exit(0);
             }else{
                 iterateNextNoteSequence();
-                setLights(currentNoteSequence);
+                lights.setLights(currentNoteSequence);
             }
         }
     }
     
-    static void test() throws Exception{
+    static void test2() throws Exception{
+        lights.setLights(currentNoteSequence);
+        for(int i=0; i<noteSequences.size()-1; i++){
+            Thread.sleep(200);
+            setNextReceivedNotes(currentNoteSequence);
+        }
+        System.exit(0);
+        
+    }
+    
+    static void test1() throws Exception{
         System.out.println("Testing: sending simulated midi input from piano");
+        lights.setLights(currentNoteSequence);
+        
         ShortMessage myMsg = new ShortMessage();
         Receiver rcvr = MidiSystem.getReceiver();
         
@@ -107,8 +124,8 @@ public class midihub
     
     static void mainLoop(){
         while(true){
-         
-            setLights(currentNoteSequence);
+            System.out.println(currentNoteSequence);
+            lights.setLights(currentNoteSequence);
             
             if(true){   //event received from midi instrument (piano)
                 if(checkNoteSequenceMatch(currentNoteSequence,receivedNoteSequence)){
@@ -153,11 +170,6 @@ public class midihub
         //System.out.println("current note sequence from midi file: "+currentNoteSequence);
     }
     
-    static void setLights(Vector<Integer> lights){
-        // Placeholder
-        // Interact with LED strip(s) connected to Raspberry Pi IO pins...
-    }
-    
     static void loadMidi() throws Exception{
         midisequence = MidiSystem.getSequence(new File("mond_1.mid"));
         tracks = midisequence.getTracks();
@@ -180,7 +192,7 @@ public class midihub
         MidiEvent event;
         MidiMessage message;
         int lastTick = maxTick();
-        lastTick=10000; //for testing - generates a small amount of console output
+        //lastTick=10000; //for testing - generates a small amount of console output
         for(int tick=0; tick<lastTick; tick++){            
             if(tracks[0].size()>t0event && tracks[0].get(t0event).getTick()<=tick){
                 message = tracks[0].get(t0event).getMessage();
@@ -274,22 +286,5 @@ public class midihub
             }
             System.out.println("");
         }
-    }
-}
-
-class LEDStrip{
-    public static final Boolean[] LEDs = new Boolean[127];
-    
-    public void setLights(Vector<Integer> lights){
-        Arrays.fill(LEDs, Boolean.FALSE);
-        for(int i=0; i<lights.size(); i++){
-            LEDs[lights.get(i)]=true;
-        }
-        
-        updateLEDs();
-    }
-    
-    void updateLEDs(){
-        // interface with ledstrip via Raspberry Pi IO pins
     }
 }

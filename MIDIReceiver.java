@@ -21,7 +21,6 @@ public class MIDIReceiver extends midihub implements Receiver
     Receiver receiver;
     MidiDevice.Info[] infos;
     static long previousTick=0;
-    //static long currentTimestamp=0;
     static long receivedTimestamp=0;
     static int currentNote=0;
     static boolean receivedNote = false;
